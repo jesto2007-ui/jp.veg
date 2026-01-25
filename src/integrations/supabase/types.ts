@@ -14,16 +14,218 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      categories: {
+        Row: {
+          created_at: string
+          icon: string | null
+          id: string
+          name: string
+          name_ta: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          icon?: string | null
+          id?: string
+          name: string
+          name_ta?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          icon?: string | null
+          id?: string
+          name?: string
+          name_ta?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      orders: {
+        Row: {
+          address: string
+          created_at: string
+          customer_name: string
+          delivery_option: string
+          id: string
+          items: Json
+          order_id: string
+          order_status: Database["public"]["Enums"]["order_status"]
+          payment_method: string
+          payment_status: Database["public"]["Enums"]["payment_status"]
+          phone: string
+          razorpay_order_id: string | null
+          razorpay_payment_id: string | null
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          address: string
+          created_at?: string
+          customer_name: string
+          delivery_option?: string
+          id?: string
+          items?: Json
+          order_id: string
+          order_status?: Database["public"]["Enums"]["order_status"]
+          payment_method?: string
+          payment_status?: Database["public"]["Enums"]["payment_status"]
+          phone: string
+          razorpay_order_id?: string | null
+          razorpay_payment_id?: string | null
+          total_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          created_at?: string
+          customer_name?: string
+          delivery_option?: string
+          id?: string
+          items?: Json
+          order_id?: string
+          order_status?: Database["public"]["Enums"]["order_status"]
+          payment_method?: string
+          payment_status?: Database["public"]["Enums"]["payment_status"]
+          phone?: string
+          razorpay_order_id?: string | null
+          razorpay_payment_id?: string | null
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      products: {
+        Row: {
+          category_id: string | null
+          created_at: string
+          description: string | null
+          description_ta: string | null
+          id: string
+          image_url: string | null
+          in_stock: boolean | null
+          is_best_seller: boolean | null
+          is_fresh: boolean | null
+          is_offer: boolean | null
+          name: string
+          name_ta: string | null
+          offer_price: number | null
+          price: number
+          unit: string
+          updated_at: string
+          weights: string[] | null
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string
+          description?: string | null
+          description_ta?: string | null
+          id?: string
+          image_url?: string | null
+          in_stock?: boolean | null
+          is_best_seller?: boolean | null
+          is_fresh?: boolean | null
+          is_offer?: boolean | null
+          name: string
+          name_ta?: string | null
+          offer_price?: number | null
+          price?: number
+          unit?: string
+          updated_at?: string
+          weights?: string[] | null
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string
+          description?: string | null
+          description_ta?: string | null
+          id?: string
+          image_url?: string | null
+          in_stock?: boolean | null
+          is_best_seller?: boolean | null
+          is_fresh?: boolean | null
+          is_offer?: boolean | null
+          name?: string
+          name_ta?: string | null
+          offer_price?: number | null
+          price?: number
+          unit?: string
+          updated_at?: string
+          weights?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      settings: {
+        Row: {
+          created_at: string
+          id: string
+          key: string
+          updated_at: string
+          value: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key: string
+          updated_at?: string
+          value?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key?: string
+          updated_at?: string
+          value?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_admin: { Args: never; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
+      order_status: "pending" | "confirmed" | "delivered" | "cancelled"
+      payment_status: "pending" | "paid" | "failed" | "cod"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +352,10 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+      order_status: ["pending", "confirmed", "delivered", "cancelled"],
+      payment_status: ["pending", "paid", "failed", "cod"],
+    },
   },
 } as const
