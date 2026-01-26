@@ -41,10 +41,44 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_profiles: {
+        Row: {
+          address: string | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          phone: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          phone: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           address: string
           created_at: string
+          customer_id: string | null
           customer_name: string
           delivery_option: string
           id: string
@@ -62,6 +96,7 @@ export type Database = {
         Insert: {
           address: string
           created_at?: string
+          customer_id?: string | null
           customer_name: string
           delivery_option?: string
           id?: string
@@ -79,6 +114,7 @@ export type Database = {
         Update: {
           address?: string
           created_at?: string
+          customer_id?: string | null
           customer_name?: string
           delivery_option?: string
           id?: string

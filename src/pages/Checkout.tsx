@@ -1,29 +1,45 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { MapPin, Phone, User, Truck, Store, CreditCard, Banknote } from 'lucide-react';
+import { MapPin, Phone, User, Truck, Store, Banknote } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { useCart } from '@/contexts/CartContext';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { useShopSettings } from '@/hooks/useShopSettings';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 const Checkout = () => {
   const navigate = useNavigate();
   const { items, totalPrice, clearCart } = useCart();
+  const { user, profile } = useAuthContext();
+  const { settings } = useShopSettings();
   
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
     address: '',
     deliveryOption: 'delivery',
-    paymentMethod: 'cod',
   });
   
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Auto-fill form with customer profile
+  useEffect(() => {
+    if (profile) {
+      setFormData(prev => ({
+        ...prev,
+        name: profile.name || prev.name,
+        phone: profile.phone || prev.phone,
+        address: profile.address || prev.address,
+      }));
+    }
+  }, [profile]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -34,63 +50,70 @@ const Checkout = () => {
     return 'JP' + Date.now().toString().slice(-8);
   };
 
-  const sendWhatsAppMessage = (orderId: string) => {
-    const SHOP_PHONE = '919876543210';
-    
-    // Build order items list
-    const itemsList = items
-      .map(item => `• ${item.name} (${item.weight}) x${item.quantity} = ₹${item.price * item.quantity}`)
-      .join('\n');
-
-    // Customer message
-    const customerMessage = `
-🛒 *Order Confirmation*
-━━━━━━━━━━━━━━━
-
-*Order ID:* ${orderId}
-*Shop:* JP.Vegetables & Fruits
-
-*Items:*
-${itemsList}
-
-*Total:* ₹${totalPrice}
-*Delivery:* ${formData.deliveryOption === 'delivery' ? 'Home Delivery' : 'Pickup'}
-*Payment:* ${formData.paymentMethod === 'cod' ? 'Cash on Delivery' : 'UPI'}
-
-Thank you for your order! 🌿
-    `.trim();
-
-    // Shop owner message  
-    const shopMessage = `
-🔔 *New Order Alert!*
-━━━━━━━━━━━━━━━
-
-*Order ID:* ${orderId}
-
-*Customer:* ${formData.name}
-*Phone:* ${formData.phone}
-*Address:* ${formData.address}
-
-*Items:*
-${itemsList}
-
-*Total:* ₹${totalPrice}
-*Delivery:* ${formData.deliveryOption === 'delivery' ? 'Home Delivery' : 'Pickup'}
-*Payment:* ${formData.paymentMethod === 'cod' ? 'Cash on Delivery' : 'UPI'}
-    `.trim();
-
-    // Open WhatsApp for shop owner notification
-    const encodedShopMessage = encodeURIComponent(shopMessage);
-    window.open(`https://wa.me/${SHOP_PHONE}?text=${encodedShopMessage}`, '_blank');
-
-    // Store order details for success page
-    sessionStorage.setItem('lastOrder', JSON.stringify({
-      orderId,
-      items,
-      totalPrice,
-      customer: formData,
-      customerMessage,
+  const saveOrderToDatabase = async (orderId: string) => {
+    const orderItems = items.map(item => ({
+      name: item.name,
+      nameTA: item.nameTA,
+      weight: item.weight,
+      quantity: item.quantity,
+      price: item.price,
     }));
+
+    const { error } = await supabase.from('orders').insert({
+      order_id: orderId,
+      customer_id: user?.id || null,
+      customer_name: formData.name,
+      phone: formData.phone,
+      address: formData.address,
+      items: orderItems,
+      total_amount: totalPrice,
+      delivery_option: formData.deliveryOption,
+      payment_method: 'cod',
+      payment_status: 'cod',
+      order_status: 'pending',
+    });
+
+    if (error) {
+      console.error('Error saving order:', error);
+      throw error;
+    }
+
+    return orderId;
+  };
+
+  const sendWhatsAppNotification = async (orderId: string) => {
+    try {
+      const orderData = {
+        orderId,
+        customerName: formData.name,
+        customerPhone: formData.phone,
+        customerAddress: formData.address,
+        items: items.map(item => ({
+          name: item.name,
+          weight: item.weight,
+          quantity: item.quantity,
+          price: item.price,
+        })),
+        totalAmount: totalPrice,
+        deliveryOption: formData.deliveryOption,
+        paymentMethod: 'cod',
+      };
+
+      const { data, error } = await supabase.functions.invoke('send-whatsapp', {
+        body: {
+          order: orderData,
+          ownerPhone: settings.whatsapp_number,
+        },
+      });
+
+      if (error) {
+        console.error('WhatsApp notification error:', error);
+      } else {
+        console.log('WhatsApp notification sent:', data);
+      }
+    } catch (error) {
+      console.error('Failed to send WhatsApp notification:', error);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -110,10 +133,26 @@ ${itemsList}
 
     try {
       const orderId = generateOrderId();
-      sendWhatsAppMessage(orderId);
+      
+      // Save order to database
+      await saveOrderToDatabase(orderId);
+      
+      // Send WhatsApp notification
+      await sendWhatsAppNotification(orderId);
+      
+      // Store order details for success page
+      sessionStorage.setItem('lastOrder', JSON.stringify({
+        orderId,
+        items,
+        totalPrice,
+        customer: formData,
+      }));
+      
       clearCart();
+      toast.success('Order placed successfully!');
       navigate('/order-success');
     } catch (error) {
+      console.error('Order submission error:', error);
       toast.error('Something went wrong. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -248,7 +287,7 @@ ${itemsList}
                   </RadioGroup>
                 </motion.div>
 
-                {/* Payment Method */}
+                {/* Payment Method - COD Only */}
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -256,40 +295,21 @@ ${itemsList}
                   className="bg-card rounded-xl p-6 shadow-card"
                 >
                   <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-                    <CreditCard className="w-5 h-5 text-primary" />
+                    <Banknote className="w-5 h-5 text-primary" />
                     Payment Method
                   </h3>
                   
-                  <RadioGroup
-                    value={formData.paymentMethod}
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, paymentMethod: value }))}
-                    className="grid md:grid-cols-2 gap-4"
-                  >
-                    <label className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-colors ${formData.paymentMethod === 'cod' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}>
-                      <RadioGroupItem value="cod" id="cod" />
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <Banknote className="w-5 h-5 text-primary" />
-                          <span className="font-medium">Cash on Delivery</span>
-                        </div>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Pay when you receive
-                        </p>
-                      </div>
-                    </label>
-                    <label className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-colors ${formData.paymentMethod === 'upi' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}>
-                      <RadioGroupItem value="upi" id="upi" />
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <CreditCard className="w-5 h-5 text-primary" />
-                          <span className="font-medium">UPI Payment</span>
-                        </div>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Pay via UPI apps
-                        </p>
-                      </div>
-                    </label>
-                  </RadioGroup>
+                  <div className="flex items-center gap-4 p-4 rounded-xl border-2 border-primary bg-primary/5">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Banknote className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <span className="font-medium text-foreground">Cash on Delivery</span>
+                      <p className="text-sm text-muted-foreground">
+                        Pay when you receive your order
+                      </p>
+                    </div>
+                  </div>
                 </motion.div>
               </div>
 
@@ -347,7 +367,7 @@ ${itemsList}
                     disabled={isSubmitting}
                     className="w-full mt-6 bg-gradient-fresh shadow-button h-12 text-base"
                   >
-                    {isSubmitting ? 'Processing...' : 'Place Order'}
+                    {isSubmitting ? 'Processing...' : 'Place Order (COD)'}
                   </Button>
                 </motion.div>
               </div>
