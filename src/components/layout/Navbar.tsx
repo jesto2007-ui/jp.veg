@@ -1,9 +1,17 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingCart, Menu, X, Leaf, Search } from 'lucide-react';
+import { ShoppingCart, Menu, X, Leaf, User, LogOut } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
+import { useAuthContext } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { toast } from 'sonner';
 
 const navLinks = [
   { path: '/', label: 'Home' },
@@ -16,6 +24,16 @@ export const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
   const { totalItems } = useCart();
+  const { user, profile, signOut } = useAuthContext();
+
+  const handleSignOut = async () => {
+    const { error } = await signOut();
+    if (error) {
+      toast.error('Error signing out');
+    } else {
+      toast.success('Signed out successfully');
+    }
+  };
 
   return (
     <header className="sticky top-0 z-50 bg-card/95 backdrop-blur-md border-b border-border">
@@ -53,9 +71,32 @@ export const Navbar = () => {
 
           {/* Actions */}
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" className="hidden md:flex">
-              <Search className="w-5 h-5" />
-            </Button>
+            {/* User Menu */}
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="hidden md:flex">
+                    <User className="w-5 h-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <div className="px-2 py-1.5 text-sm">
+                    <p className="font-medium">{profile?.name || 'Customer'}</p>
+                    <p className="text-muted-foreground text-xs">{user.email}</p>
+                  </div>
+                  <DropdownMenuItem onClick={handleSignOut}>
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Link to="/auth" className="hidden md:block">
+                <Button variant="ghost" size="sm">
+                  Sign In
+                </Button>
+              </Link>
+            )}
 
             <Link to="/cart">
               <Button variant="ghost" size="icon" className="relative">
@@ -109,6 +150,33 @@ export const Navbar = () => {
                   {link.label}
                 </Link>
               ))}
+              
+              {/* Mobile Auth */}
+              {user ? (
+                <>
+                  <div className="py-3 px-4 border-t border-border mt-2">
+                    <p className="font-medium text-foreground">{profile?.name || 'Customer'}</p>
+                    <p className="text-sm text-muted-foreground">{user.email}</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      handleSignOut();
+                      setIsOpen(false);
+                    }}
+                    className="block w-full py-3 px-4 rounded-lg text-sm font-medium text-destructive hover:bg-muted text-left"
+                  >
+                    Sign Out
+                  </button>
+                </>
+              ) : (
+                <Link
+                  to="/auth"
+                  onClick={() => setIsOpen(false)}
+                  className="block py-3 px-4 rounded-lg text-sm font-medium text-primary hover:bg-primary/10"
+                >
+                  Sign In / Sign Up
+                </Link>
+              )}
             </div>
           </motion.div>
         )}

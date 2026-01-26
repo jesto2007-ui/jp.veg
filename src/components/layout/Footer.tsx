@@ -1,7 +1,10 @@
 import { Link } from 'react-router-dom';
 import { Leaf, Phone, MapPin, Clock, Mail } from 'lucide-react';
+import { useShopSettings } from '@/hooks/useShopSettings';
 
 export const Footer = () => {
+  const { settings, loading } = useShopSettings();
+
   return (
     <footer className="bg-foreground text-primary-foreground">
       <div className="container mx-auto px-4 py-12">
@@ -13,7 +16,7 @@ export const Footer = () => {
                 <Leaf className="w-6 h-6 text-primary-foreground" />
               </div>
               <div>
-                <h3 className="font-bold">JP.Vegetables</h3>
+                <h3 className="font-bold">{settings.shop_name.split(' ')[0]}</h3>
                 <p className="text-sm text-primary-foreground/70">& Fruits</p>
               </div>
             </div>
@@ -29,7 +32,7 @@ export const Footer = () => {
               <li><Link to="/shop" className="hover:text-primary transition-colors">Shop All</Link></li>
               <li><Link to="/categories" className="hover:text-primary transition-colors">Categories</Link></li>
               <li><Link to="/contact" className="hover:text-primary transition-colors">Contact Us</Link></li>
-              <li><Link to="/admin" className="hover:text-primary transition-colors">Admin Panel</Link></li>
+              <li><Link to="/auth" className="hover:text-primary transition-colors">My Account</Link></li>
             </ul>
           </div>
 
@@ -39,15 +42,15 @@ export const Footer = () => {
             <ul className="space-y-3 text-sm text-primary-foreground/70">
               <li className="flex items-center gap-2">
                 <Phone className="w-4 h-4" />
-                <span>+91 98765 43210</span>
+                <span>{settings.shop_phone}</span>
               </li>
               <li className="flex items-center gap-2">
                 <Mail className="w-4 h-4" />
-                <span>order@jpvegetables.com</span>
+                <span>{settings.shop_email}</span>
               </li>
               <li className="flex items-start gap-2">
                 <MapPin className="w-4 h-4 mt-0.5" />
-                <span>123 Market Street, Chennai, Tamil Nadu</span>
+                <span>{settings.shop_address}</span>
               </li>
             </ul>
           </div>
@@ -58,15 +61,15 @@ export const Footer = () => {
             <ul className="space-y-2 text-sm text-primary-foreground/70">
               <li className="flex items-center gap-2">
                 <Clock className="w-4 h-4" />
-                <span>Mon - Sat: 6:00 AM - 9:00 PM</span>
+                <span>{settings.delivery_timing}</span>
               </li>
-              <li className="pl-6">Sunday: 7:00 AM - 2:00 PM</li>
+              <li className="pl-6">{settings.sunday_timing}</li>
             </ul>
           </div>
         </div>
 
         <div className="border-t border-primary-foreground/10 mt-8 pt-8 text-center text-sm text-primary-foreground/50">
-          <p>© 2024 JP.Vegetables & Fruits. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} {settings.shop_name}. All rights reserved.</p>
         </div>
       </div>
     </footer>
