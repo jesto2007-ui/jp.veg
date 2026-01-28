@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingCart, Menu, X, Leaf, User, LogOut } from 'lucide-react';
+import { ShoppingCart, Menu, X, Leaf, User, LogOut, Shield } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useAdminStatus } from '@/hooks/useAdminStatus';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
@@ -25,6 +27,7 @@ export const Navbar = () => {
   const location = useLocation();
   const { totalItems } = useCart();
   const { user, profile, signOut } = useAuthContext();
+  const { isAdmin } = useAdminStatus();
 
   const handleSignOut = async () => {
     const { error } = await signOut();
@@ -84,6 +87,18 @@ export const Navbar = () => {
                     <p className="font-medium">{profile?.name || 'Customer'}</p>
                     <p className="text-muted-foreground text-xs">{user.email}</p>
                   </div>
+                  {isAdmin && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem asChild>
+                        <Link to="/admin" className="cursor-pointer">
+                          <Shield className="w-4 h-4 mr-2" />
+                          Admin Panel
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut}>
                     <LogOut className="w-4 h-4 mr-2" />
                     Sign Out
@@ -158,6 +173,16 @@ export const Navbar = () => {
                     <p className="font-medium text-foreground">{profile?.name || 'Customer'}</p>
                     <p className="text-sm text-muted-foreground">{user.email}</p>
                   </div>
+                  {isAdmin && (
+                    <Link
+                      to="/admin"
+                      onClick={() => setIsOpen(false)}
+                      className="block py-3 px-4 rounded-lg text-sm font-medium text-primary hover:bg-primary/10"
+                    >
+                      <Shield className="w-4 h-4 inline mr-2" />
+                      Admin Panel
+                    </Link>
+                  )}
                   <button
                     onClick={() => {
                       handleSignOut();
