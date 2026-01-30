@@ -7,8 +7,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { useState } from 'react';
+import { useShopSettings } from '@/hooks/useShopSettings';
 
 const Contact = () => {
+  const { settings, loading } = useShopSettings();
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -18,7 +20,6 @@ const Contact = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    const SHOP_PHONE = '919876543210';
     const message = `
 New Contact Message:
 Name: ${formData.name}
@@ -26,7 +27,7 @@ Phone: ${formData.phone}
 Message: ${formData.message}
     `.trim();
     
-    window.open(`https://wa.me/${SHOP_PHONE}?text=${encodeURIComponent(message)}`, '_blank');
+    window.open(`https://wa.me/${settings.whatsapp_number}?text=${encodeURIComponent(message)}`, '_blank');
     toast.success('Message sent via WhatsApp!');
     setFormData({ name: '', phone: '', message: '' });
   };
@@ -35,25 +36,25 @@ Message: ${formData.message}
     {
       icon: Phone,
       title: 'Phone',
-      content: '+91 98765 43210',
-      action: 'tel:+919876543210',
+      content: settings.shop_phone,
+      action: `tel:${settings.shop_phone.replace(/\s/g, '')}`,
     },
     {
       icon: MessageCircle,
       title: 'WhatsApp',
-      content: '+91 98765 43210',
-      action: 'https://wa.me/919876543210',
+      content: settings.shop_phone,
+      action: `https://wa.me/${settings.whatsapp_number}`,
     },
     {
       icon: Mail,
       title: 'Email',
-      content: 'order@jpvegetables.com',
-      action: 'mailto:order@jpvegetables.com',
+      content: settings.shop_email,
+      action: `mailto:${settings.shop_email}`,
     },
     {
       icon: MapPin,
       title: 'Address',
-      content: '123 Market Street, Chennai, Tamil Nadu 600001',
+      content: settings.shop_address,
     },
   ];
 
@@ -118,11 +119,11 @@ Message: ${formData.message}
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Monday - Saturday</span>
-                    <span className="font-medium">6:00 AM - 9:00 PM</span>
+                    <span className="font-medium">{settings.delivery_timing.replace('Mon - Sat:', '').trim()}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Sunday</span>
-                    <span className="font-medium">7:00 AM - 2:00 PM</span>
+                    <span className="font-medium">{settings.sunday_timing.replace('Sunday:', '').trim()}</span>
                   </div>
                 </div>
               </div>

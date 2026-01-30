@@ -1,12 +1,30 @@
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ShoppingBag, Trash2, Plus, Minus, ArrowRight, ArrowLeft } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { useCart } from '@/contexts/CartContext';
+import { useAuthContext } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 const Cart = () => {
+  const navigate = useNavigate();
   const { items, updateQuantity, removeFromCart, totalPrice } = useCart();
+  const { user } = useAuthContext();
+
+  const handleCheckout = () => {
+    if (!user) {
+      toast.error('Please login to proceed to checkout', {
+        description: 'You need to be logged in to place an order',
+        action: {
+          label: 'Login',
+          onClick: () => navigate('/auth'),
+        },
+      });
+      return;
+    }
+    navigate('/checkout');
+  };
 
   if (items.length === 0) {
     return (
@@ -141,12 +159,13 @@ const Cart = () => {
                   </div>
                 </div>
 
-                <Link to="/checkout" className="block">
-                  <Button className="w-full bg-gradient-fresh shadow-button h-12 text-base">
-                    Proceed to Checkout
-                    <ArrowRight className="w-5 h-5 ml-2" />
-                  </Button>
-                </Link>
+                <Button 
+                  onClick={handleCheckout}
+                  className="w-full bg-gradient-fresh shadow-button h-12 text-base"
+                >
+                  Proceed to Checkout
+                  <ArrowRight className="w-5 h-5 ml-2" />
+                </Button>
 
                 <Link to="/shop" className="block mt-4">
                   <Button variant="outline" className="w-full">

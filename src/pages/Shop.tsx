@@ -4,14 +4,18 @@ import { motion } from 'framer-motion';
 import { Search, Filter, X } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { ProductCard } from '@/components/products/ProductCard';
-import { products, categories } from '@/data/products';
+import { useProducts, useCategories } from '@/hooks/useProducts';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const Shop = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  
+  const { products, loading: productsLoading } = useProducts();
+  const { categories, loading: categoriesLoading } = useCategories();
   
   const activeCategory = searchParams.get('category');
   const showOffers = searchParams.get('filter') === 'offers';
@@ -20,24 +24,23 @@ const Shop = () => {
     let result = products;
     
     if (activeCategory) {
-      result = result.filter(p => p.category === activeCategory);
+      result = result.filter(p => p.category_id === activeCategory);
     }
     
     if (showOffers) {
-      result = result.filter(p => p.isOffer);
+      result = result.filter(p => p.is_offer);
     }
     
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       result = result.filter(
         p => p.name.toLowerCase().includes(query) || 
-             p.nameTA.includes(query) ||
-             p.category.includes(query)
+             (p.name_ta && p.name_ta.includes(query))
       );
     }
     
     return result;
-  }, [activeCategory, showOffers, searchQuery]);
+  }, [activeCategory, showOffers, searchQuery, products]);
 
   const handleCategoryClick = (categoryId: string | null) => {
     if (categoryId) {
@@ -46,6 +49,10 @@ const Shop = () => {
       setSearchParams({});
     }
   };
+
+  const activeCategoryName = activeCategory 
+    ? categories.find(c => c.id === activeCategory)?.name 
+    : null;
 
   return (
     <Layout>
@@ -58,8 +65,8 @@ const Shop = () => {
             className="mb-8"
           >
             <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
-              {activeCategory 
-                ? categories.find(c => c.id === activeCategory)?.name 
+              {activeCategoryName 
+                ? activeCategoryName 
                 : showOffers 
                   ? "Today's Offers"
                   : 'All Products'}
@@ -105,17 +112,25 @@ const Shop = () => {
             >
               All
             </Button>
-            {categories.map(category => (
-              <Button
-                key={category.id}
-                variant={activeCategory === category.id ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => handleCategoryClick(category.id)}
-                className={activeCategory === category.id ? 'bg-gradient-fresh' : ''}
-              >
-                {category.icon} {category.name}
-              </Button>
-            ))}
+            {categoriesLoading ? (
+              <>
+                <Skeleton className="h-8 w-24" />
+                <Skeleton className="h-8 w-24" />
+                <Skeleton className="h-8 w-24" />
+              </>
+            ) : (
+              categories.map(category => (
+                <Button
+                  key={category.id}
+                  variant={activeCategory === category.id ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => handleCategoryClick(category.id)}
+                  className={activeCategory === category.id ? 'bg-gradient-fresh' : ''}
+                >
+                  {category.icon} {category.name}
+                </Button>
+              ))
+            )}
             {(activeCategory || showOffers) && (
               <Button
                 variant="ghost"
@@ -130,7 +145,20 @@ const Shop = () => {
           </motion.div>
 
           {/* Products Grid */}
-          {filteredProducts.length > 0 ? (
+          {productsLoading ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="bg-card rounded-2xl overflow-hidden shadow-card">
+                  <Skeleton className="aspect-square" />
+                  <div className="p-4 space-y-3">
+                    <Skeleton className="h-5 w-3/4" />
+                    <Skeleton className="h-4 w-1/2" />
+                    <Skeleton className="h-8 w-full" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : filteredProducts.length > 0 ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
               {filteredProducts.map((product, index) => (
                 <motion.div
