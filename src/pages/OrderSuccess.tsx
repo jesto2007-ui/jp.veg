@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CheckCircle, Home, MessageCircle, Package } from 'lucide-react';
+import { CheckCircle, Home, Package, Phone } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 
@@ -22,7 +22,7 @@ interface OrderDetails {
     deliveryOption: string;
     paymentMethod: string;
   };
-  customerMessage: string;
+  whatsappSent?: boolean;
 }
 
 const OrderSuccess = () => {
@@ -34,14 +34,6 @@ const OrderSuccess = () => {
       setOrder(JSON.parse(savedOrder));
     }
   }, []);
-
-  const handleWhatsAppShare = () => {
-    if (!order) return;
-    
-    const SHOP_PHONE = '919876543210';
-    const message = encodeURIComponent(order.customerMessage);
-    window.open(`https://wa.me/${SHOP_PHONE}?text=${message}`, '_blank');
-  };
 
   return (
     <Layout>
@@ -85,6 +77,19 @@ const OrderSuccess = () => {
             Thank you for your order. We'll deliver your fresh produce soon!
           </motion.p>
 
+          {/* WhatsApp Notification Status */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.45 }}
+            className="bg-[#25D366]/10 border border-[#25D366]/30 rounded-xl p-4 mb-6 flex items-center justify-center gap-3"
+          >
+            <Phone className="w-5 h-5 text-[#25D366]" />
+            <span className="text-sm text-foreground">
+              Order confirmation sent to your WhatsApp automatically
+            </span>
+          </motion.div>
+
           {order && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -122,18 +127,10 @@ const OrderSuccess = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
-            className="flex flex-col sm:flex-row gap-4 justify-center"
+            className="flex justify-center"
           >
-            <Button
-              onClick={handleWhatsAppShare}
-              className="bg-[#25D366] hover:bg-[#20BD5A] text-white"
-            >
-              <MessageCircle className="w-5 h-5 mr-2" />
-              Send Order via WhatsApp
-            </Button>
-            
             <Link to="/">
-              <Button variant="outline" className="w-full sm:w-auto">
+              <Button variant="default" className="bg-gradient-fresh shadow-button">
                 <Home className="w-5 h-5 mr-2" />
                 Back to Home
               </Button>

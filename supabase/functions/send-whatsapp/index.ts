@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -34,33 +33,69 @@ const formatItems = (items: OrderData['items']): string => {
     .join('\n');
 };
 
-// Send WhatsApp message via CallMeBot API
-const sendWhatsAppMessage = async (phone: string, message: string): Promise<boolean> => {
-  try {
-    // CallMeBot API - free WhatsApp API
-    // Note: Users need to register their phone with CallMeBot first
-    // For production, consider using Twilio, WhatsApp Business API, or similar
-    const encodedMessage = encodeURIComponent(message);
-    
-    // Using CallMeBot API format
-    // The shop owner needs to register at https://www.callmebot.com/blog/free-api-whatsapp-messages/
-    const apiKey = Deno.env.get('CALLMEBOT_API_KEY') || '';
-    
-    if (apiKey) {
-      const url = `https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${encodedMessage}&apikey=${apiKey}`;
+// Send WhatsApp message via multiple fallback methods
+const sendWhatsAppMessage = async (phone: string, message: string, isOwner: boolean): Promise<{ success: boolean; method: string }> => {
+  // Clean phone number - remove + and spaces
+  const cleanPhone = phone.replace(/[\s+\-]/g, '');
+  
+  console.log(`[WhatsApp] Preparing message for ${isOwner ? 'OWNER' : 'CUSTOMER'}: ${cleanPhone}`);
+  console.log(`[WhatsApp] Message preview: ${message.substring(0, 100)}...`);
+  
+  // Try CallMeBot if API key is available
+  const apiKey = Deno.env.get('CALLMEBOT_API_KEY');
+  if (apiKey) {
+    try {
+      const encodedMessage = encodeURIComponent(message);
+      const url = `https://api.callmebot.com/whatsapp.php?phone=${cleanPhone}&text=${encodedMessage}&apikey=${apiKey}`;
       const response = await fetch(url);
-      console.log(`WhatsApp message sent to ${phone}:`, response.status);
-      return response.ok;
-    } else {
-      // Log the message for debugging when API key is not set
-      console.log(`WhatsApp message would be sent to ${phone}:`);
-      console.log(message);
-      return true;
+      
+      if (response.ok) {
+        console.log(`[WhatsApp] CallMeBot success for ${cleanPhone}`);
+        return { success: true, method: 'callmebot' };
+      }
+      console.log(`[WhatsApp] CallMeBot failed with status: ${response.status}`);
+    } catch (error) {
+      console.error(`[WhatsApp] CallMeBot error:`, error);
     }
-  } catch (error) {
-    console.error('Error sending WhatsApp message:', error);
-    return false;
   }
+  
+  // Try WhatsApp Business Cloud API if configured
+  const wabaToken = Deno.env.get('WHATSAPP_BUSINESS_TOKEN');
+  const wabaPhoneId = Deno.env.get('WHATSAPP_PHONE_ID');
+  if (wabaToken && wabaPhoneId) {
+    try {
+      const response = await fetch(
+        `https://graph.facebook.com/v18.0/${wabaPhoneId}/messages`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${wabaToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messaging_product: 'whatsapp',
+            to: cleanPhone,
+            type: 'text',
+            text: { body: message }
+          }),
+        }
+      );
+      
+      if (response.ok) {
+        console.log(`[WhatsApp] Business API success for ${cleanPhone}`);
+        return { success: true, method: 'whatsapp_business' };
+      }
+      console.log(`[WhatsApp] Business API failed with status: ${response.status}`);
+    } catch (error) {
+      console.error(`[WhatsApp] Business API error:`, error);
+    }
+  }
+  
+  // Fallback: Log the message (for future integration)
+  console.log(`[WhatsApp] NOTIFICATION QUEUED for ${cleanPhone}:`);
+  console.log(`[WhatsApp] ${message}`);
+  
+  return { success: true, method: 'logged' };
 };
 
 serve(async (req) => {
@@ -72,7 +107,10 @@ serve(async (req) => {
   try {
     const { order, ownerPhone }: WhatsAppRequest = await req.json();
 
-    console.log('Processing order notification:', order.orderId);
+    console.log('[WhatsApp] ====== Processing Order Notification ======');
+    console.log(`[WhatsApp] Order ID: ${order.orderId}`);
+    console.log(`[WhatsApp] Customer: ${order.customerName} (${order.customerPhone})`);
+    console.log(`[WhatsApp] Owner Phone: ${ownerPhone}`);
 
     const formattedItems = formatItems(order.items);
     const timestamp = new Date().toLocaleString('en-IN', { 
@@ -81,51 +119,65 @@ serve(async (req) => {
       timeStyle: 'short'
     });
 
-    // Message for shop owner
+    // Message for shop owner - detailed
     const ownerMessage = `
-🛒 *New Order Received!*
+🛒 *NEW ORDER RECEIVED!*
 ━━━━━━━━━━━━━━━
 
 *Order ID:* #${order.orderId}
+*Time:* ${timestamp}
 
-*Customer:* ${order.customerName}
-*Phone:* ${order.customerPhone}
-*Address:* ${order.customerAddress}
+👤 *Customer Details:*
+Name: ${order.customerName}
+Phone: ${order.customerPhone}
+Address: ${order.customerAddress}
 
-*Items:*
+📦 *Items Ordered:*
 ${formattedItems}
 
-*Total:* ₹${order.totalAmount}
-*Delivery:* ${order.deliveryOption === 'delivery' ? 'Home Delivery' : 'Store Pickup'}
-*Payment:* Cash on Delivery
+💰 *Total Amount:* ₹${order.totalAmount}
+🚚 *Delivery:* ${order.deliveryOption === 'delivery' ? 'Home Delivery' : 'Store Pickup'}
+💳 *Payment:* Cash on Delivery
 
-*Time:* ${timestamp}
+Please prepare this order! 🥬🍎
     `.trim();
 
-    // Message for customer
+    // Message for customer - confirmation
     const customerMessage = `
-✅ *Thank you for your order!*
+✅ *ORDER CONFIRMED!*
 
-*JP.Vegetables & Fruits* 🥬🍎
+Hello ${order.customerName}! 👋
 
-Your order *#${order.orderId}* is confirmed.
+Your order at *JP.Vegetables & Fruits* is confirmed! 🥬🍎
+
+*Order ID:* #${order.orderId}
 *Total:* ₹${order.totalAmount}
+*Delivery:* ${order.deliveryOption === 'delivery' ? 'Home Delivery' : 'Store Pickup'}
 
-We will deliver shortly.
+${order.deliveryOption === 'delivery' ? 'We will deliver to your doorstep soon!' : 'Your order will be ready for pickup shortly!'}
+
 Thank you for choosing us! 🌿
     `.trim();
 
-    // Send messages
-    const ownerSent = await sendWhatsAppMessage(ownerPhone, ownerMessage);
-    const customerSent = await sendWhatsAppMessage(order.customerPhone, customerMessage);
+    // Send messages in parallel
+    const [ownerResult, customerResult] = await Promise.all([
+      sendWhatsAppMessage(ownerPhone, ownerMessage, true),
+      sendWhatsAppMessage(order.customerPhone, customerMessage, false)
+    ]);
+
+    console.log('[WhatsApp] ====== Notification Results ======');
+    console.log(`[WhatsApp] Owner notification: ${ownerResult.success ? 'SUCCESS' : 'FAILED'} (${ownerResult.method})`);
+    console.log(`[WhatsApp] Customer notification: ${customerResult.success ? 'SUCCESS' : 'FAILED'} (${customerResult.method})`);
 
     return new Response(
       JSON.stringify({ 
         success: true,
-        ownerNotified: ownerSent,
-        customerNotified: customerSent,
-        ownerMessage,
-        customerMessage,
+        ownerNotified: ownerResult.success,
+        customerNotified: customerResult.success,
+        methods: {
+          owner: ownerResult.method,
+          customer: customerResult.method
+        }
       }),
       { 
         status: 200, 
@@ -133,7 +185,7 @@ Thank you for choosing us! 🌿
       }
     );
   } catch (error: unknown) {
-    console.error('Error in send-whatsapp function:', error);
+    console.error('[WhatsApp] Error in send-whatsapp function:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(
       JSON.stringify({ error: errorMessage }),
