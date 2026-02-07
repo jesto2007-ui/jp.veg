@@ -81,15 +81,17 @@ const Checkout = () => {
     return orderId;
   };
 
-  const sendWhatsAppNotification = async (orderId: string) => {
+  const sendEmailNotification = async (orderId: string) => {
     try {
       const orderData = {
         orderId,
         customerName: formData.name,
         customerPhone: formData.phone,
         customerAddress: formData.address,
+        customerEmail: profile?.email || user?.email || null,
         items: items.map(item => ({
           name: item.name,
+          nameTA: item.nameTA,
           weight: item.weight,
           quantity: item.quantity,
           price: item.price,
@@ -99,20 +101,19 @@ const Checkout = () => {
         paymentMethod: 'cod',
       };
 
-      const { data, error } = await supabase.functions.invoke('send-whatsapp', {
+      const { data, error } = await supabase.functions.invoke('send-order-email', {
         body: {
           order: orderData,
-          ownerPhone: settings.whatsapp_number,
         },
       });
 
       if (error) {
-        console.error('WhatsApp notification error:', error);
+        console.error('Email notification error:', error);
       } else {
-        console.log('WhatsApp notification sent:', data);
+        console.log('Email notification sent:', data);
       }
     } catch (error) {
-      console.error('Failed to send WhatsApp notification:', error);
+      console.error('Failed to send email notification:', error);
     }
   };
 
@@ -137,8 +138,8 @@ const Checkout = () => {
       // Save order to database
       await saveOrderToDatabase(orderId);
       
-      // Send WhatsApp notification
-      await sendWhatsAppNotification(orderId);
+      // Send email notification
+      await sendEmailNotification(orderId);
       
       // Store order details for success page
       sessionStorage.setItem('lastOrder', JSON.stringify({
