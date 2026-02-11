@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { MapPin, Phone, User, Truck, Store, Banknote } from 'lucide-react';
+import { MapPin, Phone, User, Truck, Store, Banknote, Mail } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { useCart } from '@/contexts/CartContext';
 import { useAuthContext } from '@/contexts/AuthContext';
@@ -23,6 +23,7 @@ const Checkout = () => {
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
+    email: '',
     address: '',
     deliveryOption: 'delivery',
   });
@@ -36,6 +37,7 @@ const Checkout = () => {
         ...prev,
         name: profile.name || prev.name,
         phone: profile.phone || prev.phone,
+        email: profile.email || prev.email,
         address: profile.address || prev.address,
       }));
     }
@@ -88,7 +90,7 @@ const Checkout = () => {
         customerName: formData.name,
         customerPhone: formData.phone,
         customerAddress: formData.address,
-        customerEmail: profile?.email || user?.email || null,
+        customerEmail: formData.email || profile?.email || user?.email || null,
         items: items.map(item => ({
           name: item.name,
           nameTA: item.nameTA,
@@ -229,8 +231,24 @@ const Checkout = () => {
                           className="h-12 pl-10"
                           required
                         />
-                      </div>
                     </div>
+                  </div>
+                  
+                  <div className="mt-4 space-y-2">
+                    <Label htmlFor="email">Email Address (for order confirmation)</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                      <Input
+                        id="email"
+                        name="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        placeholder="Enter your email address"
+                        className="h-12 pl-10"
+                      />
+                    </div>
+                  </div>
                   </div>
                   
                   <div className="mt-4 space-y-2">
