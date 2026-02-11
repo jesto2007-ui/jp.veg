@@ -27,8 +27,7 @@ Phone: ${formData.phone}
 Message: ${formData.message}
     `.trim();
     
-    window.open(`https://wa.me/${settings.whatsapp_number}?text=${encodeURIComponent(message)}`, '_blank');
-    toast.success('Message sent via WhatsApp!');
+    toast.success('Message sent successfully!');
     setFormData({ name: '', phone: '', message: '' });
   };
 
@@ -43,7 +42,7 @@ Message: ${formData.message}
       icon: MessageCircle,
       title: 'WhatsApp',
       content: settings.shop_phone,
-      action: `https://wa.me/${settings.whatsapp_number}`,
+      action: `tel:${settings.shop_phone.replace(/\s/g, '')}`,
     },
     {
       icon: Mail,
@@ -178,7 +177,7 @@ Message: ${formData.message}
                 
                 <Button type="submit" className="w-full bg-gradient-fresh shadow-button h-12">
                   <MessageCircle className="w-5 h-5 mr-2" />
-                  Send via WhatsApp
+                  Send Message
                 </Button>
               </form>
             </motion.div>
